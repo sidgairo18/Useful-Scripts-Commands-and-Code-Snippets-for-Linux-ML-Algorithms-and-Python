@@ -110,7 +110,7 @@ class mAP():
             
             #calculating total numnber of relevant images for the current candidate
             for j in range(self.y_query.shape[0]):
-                if self.y_query[i] == cur_label:
+                if self.y_query[j] == cur_label:
                     total_relevant_imgs += 1.0
 
             cur_average_precision = 0.0
