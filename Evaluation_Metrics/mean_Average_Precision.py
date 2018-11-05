@@ -12,7 +12,7 @@ for available libraries like scikit-learn. You may refer to those for more effic
 
 class mAP():
 
-    def __intit__(self, X, x, y_subset, y_query, k):
+    def __init__(self, X, x, y_subset, y_query, k):
 
         self.X = X
         self.x = x
@@ -22,11 +22,13 @@ class mAP():
         self.knns = None
 
     def compute_distances(self):
-        print "Computing distances"
+        print ("Computing distances")
         num_test = self.x.shape[0]
         num_train = self.X.shape[0]
         dists = np.zeros((num_test, num_train))
-        dists = np.sqrt((self.x**2).sum(axis=1, keepdims=True) + (self.X**2).sum(axis=1) - 2*self.x.dot(self.X.T))
+        dists = np.sqrt((self.x**2).sum(axis=1, keepdims=True) + (self.X**2).sum(axis=1) - 2*(self.x).dot((self.X).T))
+        print (dists)
+
         return dists
 
     def get_knn(self, dists):
@@ -37,7 +39,7 @@ class mAP():
         knns = np.asarray(knns)
         self.knns = knns
 
-    def precision(self, k = self.k):
+    def precision(self, k):
 
         precision_array = np.zeros(self.x.shape[0])
 
@@ -60,7 +62,7 @@ class mAP():
 
         return precision_array
     
-    def recall(self, k = self.k):
+    def recall(self, k):
 
         recall_array = np.zeros(self.x.shape[0])
 
@@ -95,9 +97,10 @@ class mAP():
         Precision_array = np.zeros((self.x.shape[0], self.k))
 
         for i in range(self.k):
+            print ("Average Precision Index", i)
             Precision_array[:,i] = self.precision(i+1)
 
-        average_precision_array = np.zeros(np.x.shape[0])
+        average_precision_array = np.zeros(self.x.shape[0])
 
         for i in range(self.x.shape[0]):
             
@@ -114,7 +117,7 @@ class mAP():
 
             for j in range(no_of_retrieved_docs):
                 
-                ret_idx = self.knns[i,j]]
+                ret_idx = self.knns[i,j]
                 ret_label = self.y_query[ret_idx]
                 if ret_label == cur_label:
                     cur_average_precision += Precision_array[i,j]
@@ -127,12 +130,12 @@ class mAP():
 
     def mean_average_precision(self):
 
-        average_precision_array = self.average_percision()
+        average_precision_array = self.average_precision()
 
-        mAP = 0.0
+        maP = 0.0
 
         for i in range(self.x.shape[0]):
-            mAP += average_precision_array[i]
+            maP += average_precision_array[i]
 
-        mAP /= self.x.shape[0]
-        return mAP
+        maP /= self.x.shape[0]
+        return maP
