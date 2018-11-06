@@ -20,6 +20,7 @@ class mAP():
         self.y_query = y_query
         self.k = k
         self.knns = None
+        self.precision_array = None
 
     def compute_distances(self):
         print ("Computing distances")
@@ -100,6 +101,8 @@ class mAP():
             print ("Average Precision Index", i)
             Precision_array[:,i] = self.precision(i+1)
 
+        self.precision_array = Precision_array
+
         average_precision_array = np.zeros(self.x.shape[0])
 
         for i in range(self.x.shape[0]):
@@ -107,12 +110,6 @@ class mAP():
             #for the ith query
             cur_label = self.y_subset[i]
             total_relevant_imgs = 0.0
-            
-            #calculating total numnber of relevant images for the current candidate
-            for j in range(self.y_query.shape[0]):
-                if self.y_query[j] == cur_label:
-                    total_relevant_imgs += 1.0
-
             cur_average_precision = 0.0
 
             for j in range(no_of_retrieved_docs):
@@ -121,6 +118,9 @@ class mAP():
                 ret_label = self.y_query[ret_idx]
                 if ret_label == cur_label:
                     cur_average_precision += Precision_array[i,j]
+                    #calculating total numnber of relevant images for the current candidate
+                    total_relevant_imgs += 1.0
+
 
             cur_average_precision /= total_relevant_imgs
 
