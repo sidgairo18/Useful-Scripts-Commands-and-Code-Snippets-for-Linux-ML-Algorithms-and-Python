@@ -74,9 +74,9 @@ class cnNet():
         pool3 = MaxPooling2D(pool_size=(2, 2), name='pool3')(relu3)     
         
         flatten4 = Flatten()(pool3)                                     
-        fc4 = Dense(128, kernel_regularizer=l2(self.reg_lambda), name='fc6')(flatten4)
-        norm4 = BatchNormalization(name='norm6')(fc4)                   
-        relu4 = Activation('relu', name='relu6')(norm4)                 
+        fc4 = Dense(128, kernel_regularizer=l2(self.reg_lambda), name='fc4')(flatten4)
+        norm4 = BatchNormalization(name='norm4')(fc4)                   
+        relu4 = Activation('relu', name='relu4')(norm4)                 
         drop4 = Dropout(0.5)(relu4)                                     
         
                                                                         
