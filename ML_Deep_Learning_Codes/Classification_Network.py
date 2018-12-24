@@ -21,9 +21,7 @@ import pickle as pkl
 import numpy as np                                                      
 from tqdm import tqdm                                                   
 import random                                                           
-#from my_dataloader_for_triplet import DataGenerator                    
 from my_dataloader import DataGenerator                                 
-from test_generator import image_generator                              
                                                                         
 #Alpha : The Triplet Loss Parameter                                     
                                                                         
@@ -125,23 +123,17 @@ class cnNet():
         #validation_generator = DataGenerator(partition2['validation'], labels2, 4, (224, 224), 3, 11, True)
         #validation_generator = DataGenerator(partition['validation'], labels, 64, (224, 224), 3, 11, True)
         training_generator = DataGenerator(partition['train'], labels, **params)
-        #validation_generator = DataGenerator(partition['validation'], labels, **params)
+        validation_generator = DataGenerator(partition['validation'], labels, **params)
                                                                         
         #self.classification_model.fit(inputs, output, validation_split=0.2, epochs=50, batch_size=128, callbacks=callbacks_list, verbose=1)
         #self.triplet_model_worker.fit_generator(generator = training_generator, validation_data = validation_generator, epochs = 30, use_multiprocessing=True, workers = 10, callbacks = callbacks_list, verbose = 1)
-        self.triplet_model_worker.fit_generator(generator = training_generator,  epochs = 60, use_multiprocessing=True, workers = 10, callbacks = callbacks_list, verbose = 1)
+        #self.triplet_model_worker.fit_generator(generator = training_generator,  epochs = 60, use_multiprocessing=True, workers = 10, callbacks = callbacks_list, verbose = 1)
         #self.triplet_model_worker.fit_generator( generator = image_generator(partition['train'], labels, 128, (224,224,3)), steps_per_epoch=len(partition['train']) // 128, epochs = 50, use_multiprocessing=False, callbacks = callbacks_list, verbose = 1)
-        #self.classification_model.fit_generator(generator = training_generator, validation_data = validation_generator, epochs = 120, use_multiprocessing=True, workers = 10, callbacks = callbacks_list, verbose = 1)
+        self.classification_model.fit_generator(generator = training_generator, validation_data = validation_generator, epochs = 120, use_multiprocessing=True, workers = 10, callbacks = callbacks_list, verbose = 1)
                                                                         
                                                                         
 if __name__ == "__main__":                                              
     m = cnNet(224, 224, 3, 11, 0.3)                                   
     m.create_model()                                                    
-    #m.triplet_model_worker.load_weights('models_orig_classification/yo/weights/24.hdf5', by_name=True)
                                                                         
-    #m.create_model()                                                   
-                                                                        
-                                                                        
-    #m = load_model('models_orig_classification/yo/weights/24.hdf5')    
-    #print (m.triplet_model_worker.summary())                           
-    m.fit_model('/scratch/models/yo/') 
+    m.fit_model('/scratch/models_Small_Classification/yo/') 
