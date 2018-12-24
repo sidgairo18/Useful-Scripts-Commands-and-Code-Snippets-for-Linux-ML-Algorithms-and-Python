@@ -22,8 +22,7 @@ import numpy as np
 from tqdm import tqdm                                                   
 import random                                                           
 #from my_dataloader_for_triplet import DataGenerator                    
-from my_dataloader import DataGenerator                                 
-from test_generator import image_generator                              
+from my_dataloader_for_triplet import DataGenerator                                 
                                                                         
 #Alpha : The Triplet Loss Parameter                                     
                                                                         
@@ -136,10 +135,5 @@ if __name__ == "__main__":
     m = cnNet(224, 224, 3, 11, 0.3)                                   
     m.create_model()                                                    
     #m.triplet_model_worker.load_weights('models_orig_classification/yo/weights/24.hdf5', by_name=True)
-                                                                        
-    #m.create_model()                                                   
-                                                                        
-                                                                        
-    #m = load_model('models_orig_classification/yo/weights/24.hdf5')    
-    #print (m.triplet_model_worker.summary())                           
+    exit()                                                                    
     m.fit_model('/scratch/models/yo/') 
