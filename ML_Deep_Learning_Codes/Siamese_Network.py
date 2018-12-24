@@ -73,60 +73,38 @@ class cnNet():
         norm3 = BatchNormalization(name='norm3')(conv3)                 
         relu3 = Activation('relu', name='relu3')(norm3)                 
         pool3 = MaxPooling2D(pool_size=(2, 2), name='pool3')(relu3)     
+        
+        flatten4 = Flatten()(pool3)                                     
+        fc4 = Dense(128, kernel_regularizer=l2(self.reg_lambda), name='fc6')(flatten4)
+        norm4 = BatchNormalization(name='norm6')(fc4)                   
+        relu4 = Activation('relu', name='relu6')(norm4)                 
+        drop4 = Dropout(0.5)(relu4)                                     
+        
                                                                         
+        ##############Adding the Bottleneck layer Here#######################################################
+        bottleneck_layer = Dense(64, kernel_regularizer=l2(self.reg_lambda), name='bottleneck_layer')(drop4)
+        bottleneck_norm = BatchNormalization(name='bottleneck_norm')(bottleneck_layer)
                                                                         
-        '''                                                             
-        This was after pool5 removing the 2 fully connected layers      
-        Uncomment some part when training for triplet loss.             
-                                                                        
-        flatten6 = Flatten()(pool5)                                     
-        fc6 = Dense(256, kernel_regularizer=l2(self.reg_lambda), name='fc6')(flatten6)
-        norm6 = BatchNormalization(name='norm6')(fc6)                   
-        relu6 = Activation('relu', name='relu6')(norm6)                 
-        drop6 = Dropout(0.5)(relu6)                                     
-                                                                        
-        fc7 = Dense(self.n_classes)(drop6)                              
-        norm7 = BatchNormalization(name='norm7')(fc7)                   
-        softmax7 = Activation('softmax')(norm7)                         
-                                                                        
+        fin = Dense(self.n_classes)(bottleneck_norm)                    
+        fin_norm = BatchNormalization(name='fin_norm')(fin)             
+        fin_softmax = Activation('softmax')(fin_norm)                   
+        ######################################################################################################
+        
         ###########Triplet Model Which learns the embedding layer relu6####################
-        self.triplet_model = Model(input_image, relu6)                  
+        self.triplet_model = Model(input_image, bottleneck_norm)                  
         positive_embedding = self.triplet_model(positive_example)       
         negative_embedding = self.triplet_model(negative_example)       
         anchor_embedding = self.triplet_model(anchor_example)           
         ###########Triplet Model Which learns the embedding layer relu6####################
-                                                                        
-        adam_opt = optimizers.Adam(lr=0.0001, amsgrad=False)            
-        #self.classification_model = Model(input_image, softmax7)       
-                                                                        
+        
         #The Triplet Model which optimizes over the triplet loss.       
         loss = Lambda(triplet_loss, output_shape=(1,))([anchor_embedding, positive_embedding, negative_embedding])
         self.triplet_model_worker = Model(inputs=[anchor_example, positive_example, negative_example], outputs = loss)
-
-        '''                                                             
-                                                                        
-        flatten6 = Flatten()(pool3)                                     
-        fc6 = Dense(128, kernel_regularizer=l2(self.reg_lambda), name='fc6')(flatten6)
-        norm6 = BatchNormalization(name='norm6')(fc6)                   
-        relu6 = Activation('relu', name='relu6')(norm6)                 
-        drop6 = Dropout(0.5)(relu6)                                     
-                                                                        
-        ##############Adding the Bottleneck layer Here#######################################################
-        bottleneck_layer = Dense(64, kernel_regularizer=l2(self.reg_lambda), name='bottleneck_layer')(drop6)
-        bottleneck_norm = BatchNormalization(name='bottleneck_norm')(bottleneck_layer)
-                                                                        
-        fin = Dense(self.n_classes)(bottleneck_nrom)                    
-        fin_norm = BatchNormalization(name='fin_norm')(fin)             
-        fin_softmax = Activation('softmax')(fin_norm)                   
-        ######################################################################################################
                                                                         
         adam_opt = optimizers.Adam(lr=0.00001, amsgrad=False)           
-        self.classification_model = Model(input_image, fin_softmax)     
                                                                         
-        #self.triplet_model_worker.compile(loss='mean_absolute_error', optimizer=adam_opt)
-        self.classification_model.compile(optimizer=adam_opt, loss='categorical_crossentropy', metrics=['accuracy'])
-        #print (self.classification_model.summary())                    
-        print (self.classification_model.summary())                     
+        self.triplet_model_worker.compile(loss='mean_absolute_error', optimizer=adam_opt)
+        print (self.triplet_model_worker.summary())
                                                                         
                                                                         
     def fit_model(self, pathname='./models/'):                          
@@ -145,25 +123,13 @@ class cnNet():
         params = {'dim': (224, 224), 'batch_size':128, 'n_classes':11, 'n_channels':3, 'shuffle':True}
                                                                         
         #Datasets                                                               
-        partition = pickle.load(open('../../data/bam_2_partition.pkl', 'rb'))
-        labels = pickle.load(open('../../data/bam_2_labels.pkl', 'rb')) 
-        #partition = pickle.load(open('../../data/bam_2_partition_triplet.pkl', 'rb'))          
-        #labels = pickle.load(open('../../data/bam_2_labels_triplet.pkl', 'rb'))            
-        #partition2 = pickle.load(open('../../data/bam_2_partition_triplet_val.pkl', 'rb'))          
-        #labels2 = pickle.load(open('../../data/bam_2_partition_triplet_val_labels.pkl', 'rb'))            
+        partition = pickle.load(open('../../data/bam_2_partition_triplet.pkl', 'rb'))          
+        labels = pickle.load(open('../../data/bam_2_labels_triplet.pkl', 'rb'))            
                                                                         
         #Generators
-        #training_generator = DataGenerator(partition['train'], labels, 128, (224, 224), 3, 11, True)
-        #validation_generator = DataGenerator(partition2['validation'], labels2, 4, (224, 224), 3, 11, True)
-        #validation_generator = DataGenerator(partition['validation'], labels, 64, (224, 224), 3, 11, True)
         training_generator = DataGenerator(partition['train'], labels, **params)
-        #validation_generator = DataGenerator(partition['validation'], labels, **params)
-                                                                        
-        #self.classification_model.fit(inputs, output, validation_split=0.2, epochs=50, batch_size=128, callbacks=callbacks_list, verbose=1)
-        #self.triplet_model_worker.fit_generator(generator = training_generator, validation_data = validation_generator, epochs = 30, use_multiprocessing=True, workers = 10, callbacks = callbacks_list, verbose = 1)
+
         self.triplet_model_worker.fit_generator(generator = training_generator,  epochs = 60, use_multiprocessing=True, workers = 10, callbacks = callbacks_list, verbose = 1)
-        #self.triplet_model_worker.fit_generator( generator = image_generator(partition['train'], labels, 128, (224,224,3)), steps_per_epoch=len(partition['train']) // 128, epochs = 50, use_multiprocessing=False, callbacks = callbacks_list, verbose = 1)
-        #self.classification_model.fit_generator(generator = training_generator, validation_data = validation_generator, epochs = 120, use_multiprocessing=True, workers = 10, callbacks = callbacks_list, verbose = 1)
                                                                         
                                                                         
 if __name__ == "__main__":                                              
