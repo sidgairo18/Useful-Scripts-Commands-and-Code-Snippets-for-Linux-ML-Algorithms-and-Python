@@ -53,7 +53,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='training_filename.txt', triplets_filename='training_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=True, **kwargs)
     
     #testing_loader - Remember to update filenames_filename, triplet_filename
-    train_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='training_filename.txt', triplets_filename='training_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=True, **kwargs)
+    train_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='testing_filename.txt', triplets_filename='testing_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=True, **kwargs)
 
     # Defining CNN architecture
 
@@ -101,6 +101,132 @@ def main():
 
     n_parameters = sum([p.data.nelement() for p in tnet.parameters()])
     print(' + Number of params: {}'.format(n_parameters))
+
+    for epoch in range(1, args.epochs+1):
+        # train for 1 epoch
+        train(train_loader, tnet, criterion, optimizer, epoch)
+        # evaluate on validation set
+        acc = test(test_loader, tnet, criterion, epoch)
+
+        #remember best_acc and save checkpoint
+
+        is_best = acc > best_acc
+        best_acc = max(acc, best_acc)
+        save_checkpoint({'epoch':epoch+1, 'state_dict':tnet.state_dict(), 'best_prec1':best_acc,}, is_best)
+
+def train(train_loader, tnet, criterion, optimizer, epoch):
+    losses = AverageMeter()
+    accs = AverageMeter()
+    emb_norms = AverageMeter()
+
+    # Switch to train mode
+    tnet.train()
+
+    for batch_idx, (data1, data2, data3) in enumerate(train_loader):
+        if args.cuda:
+            data1, data2, data3 = data1.cuda(), data2.cuda(), data3.cuda()
+
+        data1, data2, data3 = Variable(data1), Variable(data2), Variable(data3)
+
+        # Compute Output
+        dist_a, dist_b, embedded_x, embedded_y, embedded_z = tnet(data1, data2, data3)
+        target = torch.FloatTensor(dist_a.size()).fill_(1)
+        if args.cuda:
+            target.cuda()
+        target = Variable(target)
+        
+        loss_triplet = criterion(dist_a, dist_b, target)
+        loss_embedd = embedded_x.norm(2) + embedded_y.norm(2) + embedded_z.norm(2)
+        loss = loss_triplet + 0.001 * loss_embedd
+
+        # measure accuracy and record loss
+
+        acc = accuracy(dist_a, dist_b)
+        losses.update(loss_triplet.data[0], data1.size(0))
+        accs.update(acc, data1.size(0))
+        emb_norms.update(loss_embedd.data[0]/3, data1.size(0))
+
+        #compute gradient and do optimizer step
+
+        optimzer.zero_grad()
+        loss.backward()
+        optimzer.step()
+
+        if batch_idx % args.log_interval == 0:
+            print ('Train Epoch: {} [{}/{}]\t Loss: {:.4f} ({:.4f}) \t Acc: {:.2f}% ({:.2f}) \t Emb_norm: {:.2f} ({:.2f})'.format(epoch, batch_idx*len(data1), len(train_loader.dataset), losses.val, losses.avg, 100.*accs.val, 100.*accs.avg, emb_norms.val, emb_norms.avg))
+
+    # log avg values to somewhere
+    '''
+    plotter.plot('acc', 'train', epoch, accs.avg)
+    plotter.plot('loss', 'train', epoch, losses.avg)
+    plotter.plot('emb_norms', 'train', epoch, emb_norms.avg)
+    '''
+
+def test(test_loader, tnet, criterion, epoch):
+
+    losses = AverageMeter()
+    accs = AverageMeter()
+
+    #switch to evaluation mode
+
+    tnet.eval()
+
+    for batch_idx, (data1, data2, data3) in enumerate(test_loader):
+        if args.cuda:
+            data1, data2, data3 = data1.cuda(), data2.cuda(), data3.cuda()
+
+        #compute output
+
+        dist_a, dist_b, _, _, _ = tnet(data1, data2, data3)
+        target = torch.FloatTensor(data_a.size()).fill_(1)
+
+        if args.cuda:
+            target = target.cuda()
+
+        test_loss = criterion(dist_a, dist_b, target).data[0]
+
+        # measure accuracy
+        acc = accuracy(dist_a, dist_b)
+        accs.update(acc, data1.size(0))
+        losses.update(test_loss, data1.size(0))
+
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {:.2f}%\n'.format(losses.avg, 100. * accs.avg))
+
+    plotter.plot('acc', 'test', epoch, accs.avg)
+    plotter.plot('loss', 'test', epoch, losses.avg)
+    return accs.avg
+
+
+
+def accuracy(dist_a, dist_b):
+    margin = 0
+    pred = (dist_a - dist_b + margin).cpu().data
+    return (pred > 0).sum()*1.0/dist_a.size()[0]
+
+
+###################### Class AverageMeter ################################
+
+class AverageMeter(object):
+
+    '''Computers and stores the average and current value'''
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n = 1):
+        self.val = val
+        self.sum += val*n
+        self.count += n
+        self.avg = self.num / self.count
+
+###################### Class AverageMeter ################################
 
 
 ##################### Class for VisdomLinePlotter ##########################
