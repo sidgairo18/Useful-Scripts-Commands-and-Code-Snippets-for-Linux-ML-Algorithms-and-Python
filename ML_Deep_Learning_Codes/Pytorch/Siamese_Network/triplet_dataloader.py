@@ -8,13 +8,14 @@ from skimage import io, transform
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
+import matplotlib.pyplot as plt
 
 #Ignore Warnings
 import warnings
 warnings.filterwarnings("ignore")
 
 plt.ion() #interative
-print("Import Successful")
+print("Import Successful TripletImageLoader")
 
 def default_image_loader(path):
     return Image.open(path).convert('RGB')
