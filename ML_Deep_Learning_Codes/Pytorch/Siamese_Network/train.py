@@ -14,6 +14,7 @@ from triplet_dataloader import TripletImageLoader
 from triplet_network import Tripletnet
 from visdom import Visdom
 import numpy as np
+import pdb
 
 print ("Import Successful")
 
@@ -53,7 +54,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='training_filename.txt', triplets_filename='training_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=True, **kwargs)
     
     #testing_loader - Remember to update filenames_filename, triplet_filename
-    train_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='testing_filename.txt', triplets_filename='testing_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=True, **kwargs)
+    test_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='testing_filename.txt', triplets_filename='testing_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=True, **kwargs)
 
     # Defining CNN architecture
 
@@ -112,7 +113,7 @@ def main():
 
         is_best = acc > best_acc
         best_acc = max(acc, best_acc)
-        save_checkpoint({'epoch':epoch+1, 'state_dict':tnet.state_dict(), 'best_prec1':best_acc,}, is_best)
+        #save_checkpoint({'epoch':epoch+1, 'state_dict':tnet.state_dict(), 'best_prec1':best_acc,}, is_best)
 
 def train(train_loader, tnet, criterion, optimizer, epoch):
     losses = AverageMeter()
@@ -132,7 +133,7 @@ def train(train_loader, tnet, criterion, optimizer, epoch):
         dist_a, dist_b, embedded_x, embedded_y, embedded_z = tnet(data1, data2, data3)
         target = torch.FloatTensor(dist_a.size()).fill_(1)
         if args.cuda:
-            target.cuda()
+            target = target.cuda()
         target = Variable(target)
         
         loss_triplet = criterion(dist_a, dist_b, target)
@@ -140,17 +141,16 @@ def train(train_loader, tnet, criterion, optimizer, epoch):
         loss = loss_triplet + 0.001 * loss_embedd
 
         # measure accuracy and record loss
-
         acc = accuracy(dist_a, dist_b)
-        losses.update(loss_triplet.data[0], data1.size(0))
+        losses.update(loss_triplet.data, data1.size(0))
         accs.update(acc, data1.size(0))
-        emb_norms.update(loss_embedd.data[0]/3, data1.size(0))
+        emb_norms.update(loss_embedd.data/3, data1.size(0))
 
         #compute gradient and do optimizer step
 
-        optimzer.zero_grad()
+        optimizer.zero_grad()
         loss.backward()
-        optimzer.step()
+        optimizer.step()
 
         if batch_idx % args.log_interval == 0:
             print ('Train Epoch: {} [{}/{}]\t Loss: {:.4f} ({:.4f}) \t Acc: {:.2f}% ({:.2f}) \t Emb_norm: {:.2f} ({:.2f})'.format(epoch, batch_idx*len(data1), len(train_loader.dataset), losses.val, losses.avg, 100.*accs.val, 100.*accs.avg, emb_norms.val, emb_norms.avg))
@@ -178,12 +178,12 @@ def test(test_loader, tnet, criterion, epoch):
         #compute output
 
         dist_a, dist_b, _, _, _ = tnet(data1, data2, data3)
-        target = torch.FloatTensor(data_a.size()).fill_(1)
+        target = torch.FloatTensor(dist_a.size()).fill_(1)
 
         if args.cuda:
             target = target.cuda()
 
-        test_loss = criterion(dist_a, dist_b, target).data[0]
+        test_loss = criterion(dist_a, dist_b, target).data
 
         # measure accuracy
         acc = accuracy(dist_a, dist_b)
@@ -192,16 +192,26 @@ def test(test_loader, tnet, criterion, epoch):
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {:.2f}%\n'.format(losses.avg, 100. * accs.avg))
 
-    plotter.plot('acc', 'test', epoch, accs.avg)
-    plotter.plot('loss', 'test', epoch, losses.avg)
+    #plotter.plot('acc', 'test', epoch, accs.avg)
+    #plotter.plot('loss', 'test', epoch, losses.avg)
     return accs.avg
 
 
 
 def accuracy(dist_a, dist_b):
     margin = 0
-    pred = (dist_a - dist_b + margin).cpu().data
-    return (pred > 0).sum()*1.0/dist_a.size()[0]
+    pred = (dist_a - dist_b - margin).cpu().data
+    return float((pred > 0).sum()*1.0)/(dist_a.size()[0])
+
+def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+    """Saves checkpoint to disk"""
+    directory = "runs/%s/"%(args.name)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    filename = directory + filename
+    torch.save(state, filename)
+    if is_best:
+        shutil.copyfile(filename, 'runs/%s/'%(args.name) + 'model_best.pth.tar')
 
 
 ###################### Class AverageMeter ################################
@@ -224,7 +234,7 @@ class AverageMeter(object):
         self.val = val
         self.sum += val*n
         self.count += n
-        self.avg = self.num / self.count
+        self.avg = self.sum / self.count
 
 ###################### Class AverageMeter ################################
 
