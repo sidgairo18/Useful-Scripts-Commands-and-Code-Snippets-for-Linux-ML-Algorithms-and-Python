@@ -9,6 +9,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 import matplotlib.pyplot as plt
+from PIL import Image
 
 #Ignore Warnings
 import warnings
@@ -18,7 +19,8 @@ plt.ion() #interative
 print("Import Successful TripletImageLoader")
 
 def default_image_loader(path):
-    return Image.open(path).convert('RGB')
+    #return Image.open(path).convert('RGB')
+    return Image.open(path)
 
 class TripletImageLoader(Dataset):
 
@@ -50,7 +52,7 @@ class TripletImageLoader(Dataset):
         img2 = self.loader(os.path.join(self.base_path,self.filenamelist[int(path2)])) #far => negative
         img3 = self.loader(os.path.join(self.base_path,self.filenamelist[int(path3)])) #close => positive
 
-        if self.tranform:
+        if self.transform:
             img1 = self.transform(img1)
             img2 = self.transform(img2)
             img3 = self.transform(img3)
