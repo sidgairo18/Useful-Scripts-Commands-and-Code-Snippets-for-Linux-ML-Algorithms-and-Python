@@ -82,6 +82,26 @@ def main():
 
     print ("Model Initialized")
 
+    if args.resume:
+        if os.path.isfile(args.resume):
+            print("=> loading checkpoint '{}'".format(args.resume))
+            checkpoint = torch.load(args.resume)
+            args.start_epoch = checkpoint['epoch']
+            best_prec1 = checkpoint['best_prec1']
+            tnet.load_state_dict(checkpoint['state_dict'])
+            print("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
+
+        else:
+            print("=> no checkpoint found at '{}'".format(args.resume))
+
+    cudnn.benchmark = True
+
+    criterion = torch.nn.MarginRankingLoss(margin = args.margin)
+    optimizer = optim.SGD(tnet.parameters(), lr=args.lr, momentum=args.momentum)
+
+    n_parameters = sum([p.data.nelement() for p in tnet.parameters()])
+    print(' + Number of params: {}'.format(n_parameters))
+
 
 ##################### Class for VisdomLinePlotter ##########################
 class VisdomLinePlotter(object):
