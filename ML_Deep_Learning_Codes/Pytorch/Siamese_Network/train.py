@@ -54,7 +54,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='training_filename.txt', triplets_filename='training_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=True, **kwargs)
     
     #testing_loader - Remember to update filenames_filename, triplet_filename
-    test_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='testing_filename.txt', triplets_filename='testing_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=True, **kwargs)
+    test_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='testing_filename.txt', triplets_filename='testing_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=False, **kwargs)
 
     # Defining CNN architecture
 
@@ -113,6 +113,7 @@ def main():
 
         is_best = acc > best_acc
         best_acc = max(acc, best_acc)
+        extract_embeddings(test_loader, model)
         #save_checkpoint({'epoch':epoch+1, 'state_dict':tnet.state_dict(), 'best_prec1':best_acc,}, is_best)
 
 def train(train_loader, tnet, criterion, optimizer, epoch):
@@ -196,7 +197,19 @@ def test(test_loader, tnet, criterion, epoch):
     #plotter.plot('loss', 'test', epoch, losses.avg)
     return accs.avg
 
+def extract_embeddings(some_loader, embedding_model):
 
+    print ("Extracting Embeddings as we speak")
+    with torch.no_grad():
+        embedding_model.eval()
+
+        for batch_idx, (data1, data2, data3) in enumerate(some_loader):
+            if args.cuda:
+                data1 = data1.cuda()
+
+            out = embedding_model.forward(data1).cpu().numpy()
+            print("out", out)
+            exit()
 
 def accuracy(dist_a, dist_b):
     margin = 0

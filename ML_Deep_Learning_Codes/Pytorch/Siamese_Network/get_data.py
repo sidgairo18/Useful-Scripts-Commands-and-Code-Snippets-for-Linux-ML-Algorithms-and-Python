@@ -66,42 +66,51 @@ if __name__ == "__main__":
         print ("Writing image", i)
         img = np.asarray(img, dtype=np.uint8)
         cv2.imwrite('data/mnist/testing/'+str(i)+'.jpg', img)
-    '''
     print("Labels file reading complete")
+    f = open('testing_filename.txt', 'w')
+    for i in range(10000):
+        f.write('data/mnist/testing/'+str(i)+'.jpg\n')
+    f.close()
+    exit()
+    '''
+
+
     labels_train = read_labels_file('data/mnist/train-labels.idx1-ubyte')
+    labels_test = read_labels_file('data/mnist/t10k-labels.idx1-ubyte')
     print(labels_train[:10])
+    print(labels_test[:10])
 
     classes = [0,1,2,3,4,5,6,7,8,9]
     classes_dict = {}
-    for idx, label in enumerate(labels_train):
+    for idx, label in enumerate(labels_test):
         if label not in classes_dict:
             classes_dict[label] = []
         classes_dict[label].append(idx)
 
     #writing training_triplet_filename
     
-    f = open('training_triplet_filename.txt', 'w')
-    for i in range(len(labels_train)):
-        print("writing Training Triplet Filename", i)
+    f = open('testing_triplet_filename.txt', 'w')
+    for i in range(len(labels_test)):
+        print("writing Testing Triplet Filename", i)
         a = i
         b = -1
         c = -1
         #Similar candidate
         while True:
-            c = random.randint(0, len(classes_dict[labels_train[i]])-1)
+            c = random.randint(0, len(classes_dict[labels_test[i]])-1)
             if c != a:
-                c = classes_dict[labels_train[i]][c]
+                c = classes_dict[labels_test[i]][c]
                 break
         #dissimilar candidate
         while True:
             x = random.randint(0, 9)
-            if x != labels_train[i]:
+            if x != labels_test[i]:
                 b = random.randint(0, len(classes_dict[x])-1)
                 b = classes_dict[x][b]
                 break
         f.write(str(a)+' '+str(b)+' '+str(c)+'\n')
 
     f.close()
-    print("writing Training Triplet Filename Complete")
+    print("writing Testing Triplet Filename Complete")
 
     exit()

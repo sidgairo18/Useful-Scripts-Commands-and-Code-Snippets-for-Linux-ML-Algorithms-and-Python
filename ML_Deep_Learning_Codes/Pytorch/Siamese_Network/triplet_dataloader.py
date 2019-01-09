@@ -48,6 +48,7 @@ class TripletImageLoader(Dataset):
 
     def __getitem__(self, index):
         path1, path2, path3 = self.triplets[index]
+        #print((os.path.join(self.base_path,self.filenamelist[int(path1)])))
         img1 = self.loader(os.path.join(self.base_path,self.filenamelist[int(path1)]))
         img2 = self.loader(os.path.join(self.base_path,self.filenamelist[int(path2)])) #far => negative
         img3 = self.loader(os.path.join(self.base_path,self.filenamelist[int(path3)])) #close => positive
