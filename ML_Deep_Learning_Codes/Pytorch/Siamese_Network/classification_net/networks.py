@@ -35,3 +35,17 @@ class SomeNet(nn.Module):
         x = self.convnet(x)                                         
         x = self.bottleneck(x)                                      
         return x 
+
+class ClassificationNet(nn.Module):
+    def __init__(self, embedding_net, n_classes):
+        super(ClassificationNet, self).__init__()
+        self.embedding_net = embedding_net
+        self.n_classes = n_classes
+        self.nonlinear = nn.PReLU()
+        self.fc1 = nn.Linear(2, n_classes)
+
+    def forward(self, x):
+        output = self.embedding_net(x)
+        output = self.nonlinear(output)
+        scores = F.log_softmax(self.fc1(output), dim=-1)
+        return scores
