@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import torchvision
 from torchvision import datasets, transforms
 from torch.autograd import Variable
 import torch.backends.cudnn as cudnn
@@ -76,7 +77,28 @@ def main():
             x = self.fc2(x)
             return x
 
-    model = Net()
+    class SomeNet(nn.Module):
+
+        def __init__(self):
+            super(SomeNet, self).__init__()
+            self.convnet = torchvision.models.alexnet(pretrained=False)
+            self.bottleneck = nn.Sequential(nn.Linear(1000, 256))
+            #self.bottleneck = nn.Linear(1000, 256)
+
+        def forward(self, x):
+            x = self.convnet(x)
+            x = self.bottleneck(x)
+            return x
+
+    #model is the embedding network architecture
+    #model = Net()
+
+    #Trying to use a pre-define model architecture for model
+    #model = torchvision.models.inception_v3()
+    model = SomeNet()
+    print (model)
+
+
     tnet = Tripletnet(model)
     if args.cuda:
         tnet.cuda()
@@ -113,8 +135,10 @@ def main():
 
         is_best = acc > best_acc
         best_acc = max(acc, best_acc)
-        extract_embeddings(test_loader, model)
+        #extract_embeddings(test_loader, model)
         #save_checkpoint({'epoch':epoch+1, 'state_dict':tnet.state_dict(), 'best_prec1':best_acc,}, is_best)
+    
+    extract_embeddings(test_loader, model)
 
 def train(train_loader, tnet, criterion, optimizer, epoch):
     losses = AverageMeter()
@@ -203,13 +227,19 @@ def extract_embeddings(some_loader, embedding_model):
     with torch.no_grad():
         embedding_model.eval()
 
+        out_list = []
+
         for batch_idx, (data1, data2, data3) in enumerate(some_loader):
             if args.cuda:
                 data1 = data1.cuda()
 
             out = embedding_model.forward(data1).cpu().numpy()
-            print("out", out)
-            exit()
+            for i in range(out.shape[0]):
+                out_list.append(out[i,:])
+        
+        out_list = np.asarray(out_list)
+        print ("out dimensions", out_list.shape)
+        np.savetxt('bottle_neck_mnist.txt', out_list)
 
 def accuracy(dist_a, dist_b):
     margin = 0
