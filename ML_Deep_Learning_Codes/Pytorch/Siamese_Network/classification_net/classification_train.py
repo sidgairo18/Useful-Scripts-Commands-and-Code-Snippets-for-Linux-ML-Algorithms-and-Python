@@ -67,10 +67,11 @@ def main():
     #Trying to use a pre-define model architecture for model
     #model = torchvision.models.inception_v3()
     model = SomeNet()
-    print (model)
 
 
     class_net = ClassificationNet(model, n_classes = args.n_classes)
+    print (class_net)
+    exit()
     if args.cuda:
         class_net.cuda()
 
