@@ -53,10 +53,10 @@ def main():
     kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
     #training loader
-    train_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='training_filename.txt', triplets_filename='training_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=True, **kwargs)
+    train_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='/scratch', filenames_filename='bam_filename.txt', triplets_filename='bam_training_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor()])), batch_size = args.batch_size, shuffle=True, **kwargs)
     
     #testing_loader - Remember to update filenames_filename, triplet_filename
-    test_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='testing_filename.txt', triplets_filename='testing_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=False, **kwargs)
+    test_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='bam_filename.txt', triplets_filename='bam_testing_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor()])), batch_size = args.batch_size, shuffle=False, **kwargs)
 
     #model is the embedding network architecture
     #model = Net()
