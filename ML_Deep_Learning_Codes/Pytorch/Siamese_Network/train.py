@@ -50,7 +50,7 @@ def main():
     global plotter
     #plotter = VisdomLinePlotter(env_name=args.name)
 
-    kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
+    kwargs = {'num_workers': 5, 'pin_memory': True} if args.cuda else {}
 
     #training loader
     train_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='/scratch', filenames_filename='bam_filename.txt', triplets_filename='bam_training_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor()])), batch_size = args.batch_size, shuffle=True, **kwargs)
@@ -64,10 +64,10 @@ def main():
     #Trying to use a pre-define model architecture for model
     #model = torchvision.models.inception_v3()
     model = SomeNet()
-    print (model)
 
 
     tnet = Tripletnet(model)
+    print(tnet)
     if args.cuda:
         tnet.cuda()
 
