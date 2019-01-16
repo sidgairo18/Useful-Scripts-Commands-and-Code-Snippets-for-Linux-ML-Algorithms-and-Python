@@ -50,13 +50,13 @@ def main():
     global plotter
     #plotter = VisdomLinePlotter(env_name=args.name)
 
-    kwargs = {'num_workers': 5, 'pin_memory': True} if args.cuda else {}
+    kwargs = {'num_workers': 10, 'pin_memory': True} if args.cuda else {}
 
     #training loader
     train_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='/scratch', filenames_filename='bam_filename.txt', triplets_filename='bam_training_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor()])), batch_size = args.batch_size, shuffle=True, **kwargs)
     
     #testing_loader - Remember to update filenames_filename, triplet_filename
-    test_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='.', filenames_filename='bam_filename.txt', triplets_filename='bam_testing_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor()])), batch_size = args.batch_size, shuffle=False, **kwargs)
+    test_loader = torch.utils.data.DataLoader(TripletImageLoader(base_path='/scratch', filenames_filename='bam_filename.txt', triplets_filename='bam_testing_triplet_filename.txt', transform=transforms.Compose([transforms.ToTensor()])), batch_size = args.batch_size, shuffle=False, **kwargs)
 
     #model is the embedding network architecture
     #model = Net()
@@ -95,7 +95,7 @@ def main():
 
     for epoch in range(1, args.epochs+1):
         # train for 1 epoch
-        train(train_loader, tnet, criterion, optimizer, epoch)
+        #train(train_loader, tnet, criterion, optimizer, epoch)
         # evaluate on validation set
         acc = test(test_loader, tnet, criterion, epoch)
 
@@ -121,6 +121,7 @@ def train(train_loader, tnet, criterion, optimizer, epoch):
             data1, data2, data3 = data1.cuda(), data2.cuda(), data3.cuda()
 
         data1, data2, data3 = Variable(data1), Variable(data2), Variable(data3)
+
 
         # Compute Output
         dist_a, dist_b, embedded_x, embedded_y, embedded_z = tnet(data1, data2, data3)
