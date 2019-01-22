@@ -9,6 +9,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torchvision
 from torchvision import datasets, transforms
+from torchvision.datasets import MNIST
 from torch.autograd import Variable
 import torch.backends.cudnn as cudnn
 from torch.optim import lr_scheduler
@@ -33,8 +34,8 @@ parser.add_argument('--seed', type=int, default=1, metavar='S', help='random see
 parser.add_argument('--log-interval', type=int, default=20, metavar='N', help='how many batches to wait before logging training status')
 parser.add_argument('--margin', type=float, default=0.2, metavar='M', help='margin for triplet loss (default: 2)')
 parser.add_argument('--resume', default='', type=str, help='path to latest checkpoint, default: None')
-parser.add_argument('--n-classes', default=10, type=int, help='Number of classes for classification')
-parser.add_argument('--name', default='TripletNet', type=str, help='name of experiment')
+parser.add_argument('--n-classes', default=11, type=int, help='Number of classes for classification')
+parser.add_argument('--name', default='Classification Net', type=str, help='name of experiment')
 
 print ("Training Settings updated")
 
@@ -52,26 +53,45 @@ def main():
     global plotter
     #plotter = VisdomLinePlotter(env_name=args.name)
 
-    kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
+    kwargs = {'num_workers': 10, 'pin_memory': True} if args.cuda else {}
     mnist_classes = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
+
     #training loader
-    train_loader = torch.utils.data.DataLoader(ClassificationImageLoader(base_path='.', filenames_filename='training_filename.txt', labels_filename='mnist_train_labels.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=True, **kwargs)
+    #train_loader = torch.utils.data.DataLoader(ClassificationImageLoader(base_path='.', filenames_filename='training_filename.txt', labels_filename='mnist_train_labels.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=True, **kwargs)
+
+    train_loader = torch.utils.data.DataLoader(ClassificationImageLoader(base_path='/scratch', filenames_filename='bam_classification_training_filename.txt', labels_filename='bam_classification_training_labels.txt', transform=transforms.Compose([transforms.ToTensor()])), batch_size = args.batch_size, shuffle=True, **kwargs)
     
     #testing_loader - Remember to update filenames_filename, triplet_filename
-    test_loader = torch.utils.data.DataLoader(ClassificationImageLoader(base_path='.', filenames_filename='testing_filename.txt', labels_filename='mnist_test_labels.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=False, **kwargs)
-
+    #test_loader = torch.utils.data.DataLoader(ClassificationImageLoader(base_path='.', filenames_filename='testing_filename.txt', labels_filename='mnist_test_labels.txt', transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])), batch_size = args.batch_size, shuffle=False, **kwargs)
+    test_loader = torch.utils.data.DataLoader(ClassificationImageLoader(base_path='/scratch', filenames_filename='bam_classification_testing_filename.txt', labels_filename='bam_classification_testing_labels.txt', transform=transforms.Compose([transforms.ToTensor()])), batch_size = args.batch_size, shuffle=False, **kwargs)
+    '''
+    mean, std = 0.1307, 0.3081
+    train_dataset = MNIST('../data/MNIST', train=True, download=True, transform=transforms.Compose([transforms.ToTensor(),transforms.Normalize((mean,), (std,))]))
+    test_dataset = MNIST('../data/MNIST', train=False, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((mean,), (std,))]))
+    # Set up data loaders                                                   
+    batch_size = 256                                                        
+    kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}         
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, **kwargs)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, **kwargs)
+    '''
     #model is the embedding network architecture
     #model = Net()
 
     #Trying to use a pre-define model architecture for model
     #model = torchvision.models.inception_v3()
     model = SomeNet()
+    #model = EmbeddingNet()
 
-
+    print ("Number of classes", args.n_classes)
     class_net = ClassificationNet(model, n_classes = args.n_classes)
+    
+    #checkpoint = torch.load('./runs/TripletNet/model_best.pth.tar')
+    #class_net.embedding_net.load_state_dict(checkpoint['state_dict'])
+    #print (class_net.embedding_net.state_dict())
+    
     print (class_net)
-    exit()
+
     if args.cuda:
         class_net.cuda()
 
@@ -91,7 +111,8 @@ def main():
 
     cudnn.benchmark = True
 
-    criterion = torch.nn.NLLLoss()
+    #criterion = torch.nn.NLLLoss()
+    criterion = torch.nn.CrossEntropyLoss()
     optimizer = optim.Adam(class_net.parameters(), lr=args.lr)
     scheduler = lr_scheduler.StepLR(optimizer, 8, gamma=0.1, last_epoch=-1)
 
@@ -120,9 +141,11 @@ def main():
         print (message)
 
         #extract_embeddings(test_loader, model)
-        #save_checkpoint({'epoch':epoch+1, 'state_dict':class_net.state_dict(), 'best_prec1':best_acc,}, is_best)
-    
-    #extract_embeddings(test_loader, model)
+        
+    best_acc = 0
+    is_best = 1
+    save_checkpoint({'epoch':epoch, 'state_dict':class_net.embedding_net.state_dict(), 'best_prec1':best_acc,}, is_best)
+    extract_embeddings(test_loader, model)
 
 def train(train_loader, class_net, criterion, optimizer, scheduler, epoch, metrics):
 
@@ -217,7 +240,7 @@ def test(test_loader, class_net, criterion, epoch, metrics):
                 target = (target,)
                 loss_inputs += target
 
-            loss_outputs = loss_fn(*loss_inputs)
+            loss_outputs = criterion(*loss_inputs)
             loss = loss_outputs[0] if type(loss_outputs) in (tuple, list) else loss_outputs
             val_loss += loss.item()
             for metric in metrics:
@@ -234,7 +257,7 @@ def extract_embeddings(some_loader, embedding_model):
 
         out_list = []
 
-        for batch_idx, (data1, data2, data3) in enumerate(some_loader):
+        for batch_idx, (data1, target) in enumerate(some_loader):
             if args.cuda:
                 data1 = data1.cuda()
 
@@ -244,7 +267,7 @@ def extract_embeddings(some_loader, embedding_model):
         
         out_list = np.asarray(out_list)
         print ("out dimensions", out_list.shape)
-        np.savetxt('bottle_neck_mnist.txt', out_list)
+        np.savetxt('classification_bam_features_alex_30.txt', out_list)
 
 def accuracy(dist_a, dist_b):
     margin = 0

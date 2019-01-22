@@ -28,13 +28,35 @@ class SomeNet(nn.Module):
     def __init__(self):                                             
         super(SomeNet, self).__init__()                             
         self.convnet = torchvision.models.alexnet(pretrained=False) 
-        self.bottleneck = nn.Sequential(nn.Linear(1000, 256))           
-        #self.bottleneck = nn.Linear(1000, 256)                     
+        #self.bottleneck = nn.Sequential(nn.Linear(1000, 256))           
+        self.bottleneck = nn.Linear(1000, 256)                     
                                                                     
     def forward(self, x):                                           
         x = self.convnet(x)                                         
         x = self.bottleneck(x)                                      
         return x 
+
+
+class EmbeddingNet(nn.Module):
+    def __init__(self):
+        super(EmbeddingNet, self).__init__()
+        self.convnet = nn.Sequential(nn.Conv2d(3, 32, 5), nn.PReLU(),
+                                     nn.MaxPool2d(2, stride=2),
+                                     nn.Conv2d(32, 64, 5), nn.PReLU(),
+                                     nn.MaxPool2d(2, stride=2))
+
+        self.fc = nn.Sequential(nn.Linear(64 * 4 * 4, 256),
+                                nn.PReLU(),
+                                nn.Linear(256, 256),
+                                nn.PReLU(),
+                                nn.Linear(256, 2)
+                                )
+
+    def forward(self, x):
+        output = self.convnet(x)
+        output = output.view(output.size()[0], -1)
+        output = self.fc(output)
+        return output
 
 class ClassificationNet(nn.Module):
     def __init__(self, embedding_net, n_classes):
@@ -42,10 +64,12 @@ class ClassificationNet(nn.Module):
         self.embedding_net = embedding_net
         self.n_classes = n_classes
         self.nonlinear = nn.PReLU()
-        self.fc1 = nn.Linear(2, n_classes)
+        self.fc1 = nn.Linear(256, n_classes)
 
     def forward(self, x):
         output = self.embedding_net(x)
         output = self.nonlinear(output)
         scores = F.log_softmax(self.fc1(output), dim=-1)
         return scores
+
+

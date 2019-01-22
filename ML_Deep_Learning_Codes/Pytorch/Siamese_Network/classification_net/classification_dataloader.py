@@ -10,6 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 import matplotlib.pyplot as plt
 from PIL import Image
+import cv2
 
 #Ignore Warnings
 import warnings
@@ -18,9 +19,35 @@ warnings.filterwarnings("ignore")
 plt.ion() #interative
 print("Import Successful TripletImageLoader")
 
+'''
 def default_image_loader(path):
+    
     return (Image.open(path).convert('RGB')).resize((224, 224), Image.ANTIALIAS)
+    #return (Image.open(path).convert('RGB'))
     #return Image.open(path)
+'''
+def default_image_loader(image_file):                                            
+    #img = misc.imread(image_file)                                          
+    img = cv2.imread(image_file)
+    
+    if img is None:
+        return np.zeros((224, 224, 3))
+    # GRAYSCALE 
+    if len(img.shape) == 2:                                                 
+        img_new = np.ndarray( (img.shape[0], img.shape[1], 3), dtype = 'float32')
+        img_new[:,:,0] = img                                                    
+        img_new[:,:,1] = img                                                    
+        img_new[:,:,2] = img                                                    
+        img = img_new                                                           
+    
+    img = cv2.cvtColor(np.uint8(img), cv2.COLOR_BGR2RGB)                    
+    img = img.astype('float32')                                             
+    img = img
+                                                                            
+    #img_resized = misc.imresize(img, (224, 224))                           
+    img_resized = cv2.resize(img, (224, 224))                               
+    #img_resized = img                             
+    return (img_resized/255.0).astype('float32')
 
 class ClassificationImageLoader(Dataset):
 
@@ -45,7 +72,7 @@ class ClassificationImageLoader(Dataset):
         self.loader = loader
 
     def __getitem__(self, index):
-        #print((os.path.join(self.base_path,self.filenamelist[int(path1)])))
+        #print((os.path.join(self.base_path,self.filenamelist[int(index)])), self.labels[index], index)
         img1 = self.loader(os.path.join(self.base_path,self.filenamelist[index]))
 
         if self.transform:
